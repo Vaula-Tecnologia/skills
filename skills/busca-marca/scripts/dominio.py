@@ -10,6 +10,10 @@ Uso:
 Usa a consulta pública do site (registro.br/v2/ajax/avail/raw/<domínio>), com
 pausa entre pedidos. A disponibilidade é a do momento: alguém pode registrar
 logo depois.
+
+Registrado com a data de expiração já passada (em Brasília) sai como
+"registrado, expirado": está no prazo de renovação, pode ser liberado depois,
+e nunca conta como livre. No --json, o campo "expirado" diz isso.
 """
 
 import argparse
@@ -17,8 +21,13 @@ import json
 import sys
 import time
 import urllib.request
+from datetime import date, datetime, timedelta, timezone
 
 URL = "https://registro.br/v2/ajax/avail/raw/{}"
+# Brasília não tem horário de verão desde 2019: UTC-3 fixo é o mesmo que
+# America/Sao_Paulo, e serve no Windows sem o pacote tzdata.
+UTC_MENOS_3 = timezone(timedelta(hours=-3), "UTC-3")
+OBS_EXPIRADO = "expirou em {}; em prazo de renovação, pode ser liberado depois"
 PAUSA = 1.2
 # Status 8 é o limite de consultas do registro.br: espera e tenta de novo.
 ESPERAS_DO_LIMITE = (20, 40, 60)
@@ -53,6 +62,48 @@ SITUACAO_CURTA = {
 }
 
 
+def fuso_de_brasilia():
+    try:
+        from zoneinfo import ZoneInfo
+
+        return ZoneInfo("America/Sao_Paulo")
+    except Exception:  # Windows sem tzdata: ZoneInfoNotFoundError
+        return UTC_MENOS_3
+
+
+def hoje_em_brasilia() -> date:
+    return datetime.now(fuso_de_brasilia()).date()
+
+
+def data_de_expiracao(expira: str | None) -> date | None:
+    """A data (em Brasília) do expires-at do registro.br, ou None se não houver."""
+    if not expira:
+        return None
+    texto = expira.strip().replace("Z", "+00:00")
+    try:
+        quando = datetime.fromisoformat(texto)
+    except ValueError:
+        try:
+            return date.fromisoformat(texto[:10])
+        except ValueError:
+            return None
+    if quando.tzinfo is None:
+        return quando.date()
+    return quando.astimezone(fuso_de_brasilia()).date()
+
+
+def esta_expirado(expira: str | None, hoje: date | None = None) -> bool:
+    """Verdadeiro quando a data de expiração já passou (antes de hoje, em Brasília).
+
+    Domínio registrado e expirado ainda tem dono: está no prazo de renovação e
+    só pode entrar em liberação depois. Nunca é livre.
+    """
+    vence = data_de_expiracao(expira)
+    if vence is None:
+        return False
+    return vence < (hoje or hoje_em_brasilia())
+
+
 def consultar(fqdn: str) -> dict:
     pedido = urllib.request.Request(URL.format(fqdn), headers={"User-Agent": "Mozilla/5.0 busca-marca/1.0"})
     with urllib.request.urlopen(pedido, timeout=20) as resposta:
@@ -70,6 +121,45 @@ def consultar_com_espera(fqdn: str) -> dict:
     return dados
 
 
+def montar_item(fqdn: str, dados: dict, hoje: date | None = None) -> dict:
+    status = dados.get("status")
+    expira = dados.get("expires-at", "")
+    expirado = status == 2 and esta_expirado(expira, hoje)
+    situacao = STATUS.get(status, f"status {status} (conferir no registro.br)")
+    if expirado:
+        situacao = "registrado, expirado (em prazo de renovação; pode ser liberado depois)"
+    return {
+        "dominio": fqdn,
+        "status": status,
+        "situacao": situacao,
+        "expira": expira,
+        "expirado": expirado,
+        "sugestoes": dados.get("suggestions", []),
+    }
+
+
+def linha_da_tabela(r: dict) -> tuple[str, str]:
+    """Situação e Observação da tabela --markdown."""
+    vence = data_de_expiracao(r["expira"])
+    if r["expirado"]:
+        return "registrado, expirado", OBS_EXPIRADO.format(vence.isoformat())
+    situacao = SITUACAO_CURTA.get(r["status"], r["situacao"])
+    if r["status"] in (0, 1):
+        situacao = f"**{situacao}**"
+    return situacao, f"expira em {vence.isoformat()}" if vence else ""
+
+
+def linha_de_texto(r: dict) -> str:
+    vence = data_de_expiracao(r["expira"])
+    linha = f"{r['dominio']:<32} "
+    if r["expirado"]:
+        return linha + f"registrado, expirado ({OBS_EXPIRADO.format(vence.isoformat())})"
+    linha += r["situacao"]
+    if vence:
+        linha += f" (expira {vence.isoformat()})"
+    return linha
+
+
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Disponibilidade de domínios no registro.br.")
@@ -85,16 +175,16 @@ def main() -> None:
         fqdn = nome.lower() if "." in nome else f"{nome.lower()}.{args.sufixo}"
         try:
             dados = consultar_com_espera(fqdn)
-            status = dados.get("status")
+            item = montar_item(fqdn, dados)
+        except Exception as erro:  # rede, resposta inesperada
             item = {
                 "dominio": fqdn,
-                "status": status,
-                "situacao": STATUS.get(status, f"status {status} (conferir no registro.br)"),
-                "expira": dados.get("expires-at", ""),
-                "sugestoes": dados.get("suggestions", []),
+                "status": None,
+                "situacao": f"erro: {erro}",
+                "expira": "",
+                "expirado": False,
+                "sugestoes": [],
             }
-        except Exception as erro:  # rede, resposta inesperada
-            item = {"dominio": fqdn, "status": None, "situacao": f"erro: {erro}", "expira": "", "sugestoes": []}
         resultados.append(item)
         time.sleep(PAUSA)
 
@@ -105,17 +195,11 @@ def main() -> None:
         print("| Domínio | Situação | Observação |")
         print("|---|---|---|")
         for r in resultados:
-            situacao = SITUACAO_CURTA.get(r["status"], r["situacao"])
-            if r["status"] in (0, 1):
-                situacao = f"**{situacao}**"
-            observacao = f"expira em {r['expira'][:10]}" if r["expira"] else ""
+            situacao, observacao = linha_da_tabela(r)
             print(f"| {r['dominio']} | {situacao} | {observacao} |")
         return
     for r in resultados:
-        linha = f"{r['dominio']:<32} {r['situacao']}"
-        if r["expira"]:
-            linha += f" (expira {r['expira'][:10]})"
-        print(linha)
+        print(linha_de_texto(r))
         if args.sugestoes and r["sugestoes"]:
             print(f"    livre também em: {', '.join(r['sugestoes'])}")
 

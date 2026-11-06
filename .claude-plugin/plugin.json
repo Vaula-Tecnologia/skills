@@ -1,7 +1,7 @@
 {
   "name": "vaula",
   "displayName": "Vaula",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Skills da Vaula Tecnologia: andaime e manutenção da documentação de agente nos repositórios, busca preliminar de marca (INPI) e domínio (registro.br), e criação de nomes com .com.br livre.",
   "author": {
     "name": "Vaula Tecnologia",

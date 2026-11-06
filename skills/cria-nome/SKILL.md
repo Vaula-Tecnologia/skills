@@ -97,7 +97,9 @@ Como ler o `status`:
 - **0**: livre.
 - **1**: livre, mas outra pessoa também pediu (tickets concorrentes). Proponha
   avisando do risco.
-- **2**: registrado.
+- **2**: registrado. Se vier "registrado, expirado", o dono ainda está no
+  prazo de renovação: não está livre, mas, se o nome for bom, cite-o no
+  relatório como nome a acompanhar, porque pode ser liberado depois.
 - **3**: indisponível (reservado ou proibido).
 - **5 a 7**: em processo de liberação. Não está livre agora; não proponha como
   livre.
