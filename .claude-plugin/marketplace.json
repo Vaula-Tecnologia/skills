@@ -1,7 +1,8 @@
 {
   "name": "vaula",
   "owner": {
-    "name": "Vaula Tecnologia"
+    "name": "Vaula Tecnologia",
+    "url": "https://github.com/Vaula-Tecnologia"
   },
   "metadata": {
     "description": "Skills do Claude Code feitas pela Vaula Tecnologia."
