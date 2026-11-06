@@ -1,8 +1,8 @@
 {
   "name": "vaula",
   "displayName": "Vaula",
-  "version": "1.0.1",
-  "description": "Skills da Vaula Tecnologia: andaime e manutenção da documentação de agente nos repositórios, e busca preliminar de marca (INPI) e domínio (registro.br).",
+  "version": "1.1.0",
+  "description": "Skills da Vaula Tecnologia: andaime e manutenção da documentação de agente nos repositórios, busca preliminar de marca (INPI) e domínio (registro.br), e criação de nomes com .com.br livre.",
   "author": {
     "name": "Vaula Tecnologia",
     "url": "https://github.com/Vaula-Tecnologia"
@@ -10,5 +10,5 @@
   "homepage": "https://github.com/Vaula-Tecnologia/skills",
   "repository": "https://github.com/Vaula-Tecnologia/skills",
   "license": "MIT",
-  "keywords": ["documentação", "claude-md", "inpi", "marca", "registro.br", "pt-br"]
+  "keywords": ["documentação", "claude-md", "inpi", "marca", "registro.br", "naming", "pt-br"]
 }

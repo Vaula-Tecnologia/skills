@@ -11,7 +11,7 @@
     {
       "name": "vaula",
       "source": "./",
-      "description": "Andaime de documentação de projeto (novo-projeto, manter-docs) e busca de marca no INPI e de domínio no registro.br (busca-marca)."
+      "description": "Andaime de documentação de projeto (novo-projeto, manter-docs), busca de marca no INPI e de domínio no registro.br (busca-marca) e criação de nomes com .com.br livre (cria-nome)."
     }
   ]
 }
