@@ -1,0 +1,16 @@
+{
+  "name": "vaula",
+  "owner": {
+    "name": "Vaula Tecnologia"
+  },
+  "metadata": {
+    "description": "Skills do Claude Code feitas pela Vaula Tecnologia."
+  },
+  "plugins": [
+    {
+      "name": "vaula",
+      "source": "./",
+      "description": "Andaime de documentação de projeto (novo-projeto, manter-docs) e busca de marca no INPI e de domínio no registro.br (busca-marca)."
+    }
+  ]
+}
