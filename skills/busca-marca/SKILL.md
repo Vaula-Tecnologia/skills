@@ -1,6 +1,6 @@
 ---
 name: busca-marca
-description: Busca preliminar de marca no INPI (base pePI, acesso anônimo) e de domínio .br no registro.br, com leitura do risco de conflito. Use sempre que o usuário quiser saber se um nome de produto, empresa ou serviço "está livre", "pode ser registrado", "já existe no INPI", "tem marca parecida", ou quando estiver escolhendo, comparando ou trocando o nome de algo (inclusive pedindo sugestões de nomes com domínio .com.br disponível), e também quando pedir para consultar um processo de marca pelo número. Não substitui o parecer de um advogado de marcas, e o relatório diz isso.
+description: Busca preliminar de marca no INPI (base pePI, acesso anônimo) e de domínio .br no registro.br, com leitura do risco de conflito. Use sempre que o usuário quiser saber se um nome de produto, empresa ou serviço "está livre", "pode ser registrado", "já existe no INPI", "tem marca parecida", ou quando estiver comparando nomes já escolhidos, e também quando pedir para consultar um processo de marca pelo número. Para criar nomes novos com .com.br livre, a skill é a cria-nome, que depois passa os finalistas para esta. Não substitui o parecer de um advogado de marcas, e o relatório diz isso.
 ---
 
 # Busca de marca e domínio
@@ -34,6 +34,8 @@ python scripts/dominio.py selar viusumiu esvai
 python scripts/dominio.py sigilo --sufixo seg.br
 # em que outras categorias .br o nome está livre
 python scripts/dominio.py sigilo --sugestoes
+# tabela para o relatório, com a situação por extenso
+python scripts/dominio.py selar esvai --markdown
 ```
 
 Use `--json` nos dois quando for processar o resultado.
@@ -74,4 +76,5 @@ Ponha a data da busca, porque o resultado muda com o tempo. O horário segue a r
 - `RuntimeError: resposta do pePI sem contagem`: o formulário ou a sessão mudou. Não conclua "nenhuma marca". Abra `https://busca.inpi.gov.br/pePI/jsp/marcas/Pesquisa_classe_basica.jsp`, confira os campos do formulário e ajuste `Sessao.buscar` em `scripts/inpi.py`.
 - `processo ... não encontrado`: confira se o número tem 9 dígitos. O `detalhe` recebe o número do processo, não o código interno.
 - Resultado com mais páginas do que as lidas: o cabeçalho avisa. Filtre por classe ou aumente `--max-paginas`, em vez de concluir com a lista cortada.
+- registro.br com "limite de consultas" (status 8): o script já esperou e tentou de novo. Espere um minuto e consulte só esses nomes; costuma ser outra busca rodando do mesmo IP.
 - registro.br com erro ou status desconhecido: diga o número do status e sugira conferir o domínio no site. Não adivinhe.
