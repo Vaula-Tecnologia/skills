@@ -50,7 +50,8 @@ skills/
 Issues e pull requests são bem-vindos. Mudou uma skill: abra o PR e suba a
 `version` do `plugin.json`, para quem já instalou receber a atualização. Skill
 nova: uma pasta em `skills/` e uma linha na tabela acima. Rode
-`claude plugin validate .` antes de abrir o PR.
+`claude plugin validate .` e `python -m unittest discover -s tests` (testes
+dos scripts, só com a biblioteca padrão) antes de abrir o PR.
 
 ## Licença
 
