@@ -23,6 +23,7 @@ O que o pePI faz e este script respeita:
 
 import argparse
 import html
+import http.client
 import http.cookiejar
 import json
 import re
@@ -36,6 +37,12 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) busca-marca/1.0"
 PAUSA = 1.5
 POR_PAGINA = 100
 CODIFICACAO = "iso-8859-1"
+# A ficha (Action=detail) é a página lenta do pePI: em 2026-11-09 levou de
+# 25 s a mais de 180 s, enquanto a busca respondia em menos de 2 s. Com 60 s,
+# metade das fichas estourava o tempo.
+TIMEOUT = 180
+# Rede: tempo esgotado, conexão recusada ou caída, erro HTTP ou de TLS.
+SEM_RESPOSTA = (OSError, http.client.HTTPException)
 
 # Situações que não bloqueiam mais (a marca morreu). "Indeferido" ainda pode
 # estar no prazo de recurso: o relatório deve dizer isso quando aparecer.
@@ -55,7 +62,7 @@ class Sessao:
         pedido = urllib.request.Request(url, data=corpo)
         if referer:
             pedido.add_header("Referer", referer)
-        with self.abridor.open(pedido, timeout=60) as resposta:
+        with self.abridor.open(pedido, timeout=TIMEOUT) as resposta:
             texto = resposta.read().decode(CODIFICACAO, errors="replace")
         time.sleep(PAUSA)
         return texto
@@ -192,25 +199,49 @@ def buscar(args: argparse.Namespace) -> None:
             print("  (nenhuma)")
 
 
+def trecho_da_ficha(pagina: str) -> str:
+    texto = _texto(re.sub(r"<script.*?</script>", " ", pagina, flags=re.S))
+    inicio = texto.find("Nº do Processo")
+    fim = texto.find("Representante Legal", inicio)
+    return texto[inicio:fim if fim > inicio else inicio + 3000] if inicio >= 0 else texto[:3000]
+
+
 def detalhe(args: argparse.Namespace) -> None:
+    """Uma ficha que não vem não derruba as outras: segue para o próximo
+    processo e tenta as que faltaram mais uma vez no fim. Em 2026-11-09 a
+    ficha que estourou 180 s veio em 1 s na segunda tentativa."""
     sessao = Sessao()
-    for processo in args.processo:
-        print(f"=== Processo {processo}")
-        try:
-            pagina = sessao.detalhe(processo)
-        except RuntimeError as erro:
-            print(f"  {erro}\n")
-            continue
-        texto = _texto(re.sub(r"<script.*?</script>", " ", pagina, flags=re.S))
-        inicio = texto.find("Nº do Processo")
-        fim = texto.find("Representante Legal", inicio)
-        trecho = texto[inicio:fim if fim > inicio else inicio + 3000] if inicio >= 0 else texto[:3000]
-        print(trecho)
-        print()
+    pendentes = list(args.processo)
+    for tentativa in (1, 2):
+        sem_resposta = []
+        for processo in pendentes:
+            print(f"=== Processo {processo}" + (" (segunda tentativa)" if tentativa == 2 else ""))
+            try:
+                pagina = sessao.detalhe(processo)
+            except RuntimeError as erro:
+                print(f"  {erro}\n")
+                continue
+            except SEM_RESPOSTA as erro:
+                print(f"  pePI sem resposta ({erro.__class__.__name__}: {erro})")
+                print("  tento de novo no fim\n" if tentativa == 1 else "")
+                sem_resposta.append(processo)
+                continue
+            print(trecho_da_ficha(pagina))
+            print()
+        pendentes = sem_resposta
+        if not pendentes:
+            return
+    print(
+        f"FICHAS NÃO LIDAS: {' '.join(pendentes)}. O pePI não respondeu duas vezes."
+        f" Rode `detalhe {' '.join(pendentes)}` daqui a alguns minutos;"
+        " sem a ficha, não classifique o risco dessas marcas."
+    )
+    sys.exit(1)
 
 
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Busca preliminar de marcas no INPI (pePI).")
     sub = parser.add_subparsers(dest="comando", required=True)
 
@@ -228,7 +259,16 @@ def main() -> None:
     d.set_defaults(func=detalhe)
 
     args = parser.parse_args()
-    args.func(args)
+    try:
+        args.func(args)
+    except SEM_RESPOSTA as erro:
+        # Login ou busca sem resposta: não há resultado parcial que valha.
+        print(
+            f"pePI sem resposta ({erro.__class__.__name__}: {erro}). Tente de novo daqui a"
+            " alguns minutos; isto não quer dizer \"nenhuma marca\".",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":
