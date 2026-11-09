@@ -33,7 +33,9 @@ import urllib.parse
 import urllib.request
 
 BASE = "https://busca.inpi.gov.br/pePI"
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) busca-marca/1.0"
+# User-Agent honesto de robô, nunca de navegador. Conferido ao vivo em
+# 2026-11-09: o pePI e o registro.br respondem a ele como ao de navegador.
+UA = "busca-marca/1.0 (robo de busca preliminar de marcas; +https://github.com/Vaula-Tecnologia/skills)"
 PAUSA = 1.5
 POR_PAGINA = 100
 CODIFICACAO = "iso-8859-1"
@@ -47,6 +49,12 @@ SEM_RESPOSTA = (OSError, http.client.HTTPException)
 # Situações que não bloqueiam mais (a marca morreu). "Indeferido" ainda pode
 # estar no prazo de recurso: o relatório deve dizer isso quando aparecer.
 MORTA = re.compile(r"extint|arquivad|indeferid|nul[oa]\b|inexistente|cancelad", re.I)
+# Marca de alto renome (art. 125 da Lei 9.279/96: proteção em todas as
+# classes). O pePI a lista no topo da primeira página, sem número de processo
+# ("-") e com "Alto Renome" na coluna da situação, mesmo na busca filtrada
+# por classe (visto em 2026-11-09: Havaianas na busca radical "vai", classe
+# 09). Até essa data a linha era descartada por não ter processo.
+ALTO_RENOME = re.compile(r"alto\s+renome", re.I)
 
 
 class Sessao:
@@ -132,20 +140,25 @@ def linhas_de(pagina: str) -> list[dict]:
         if len(celulas) < 8:
             continue
         numero = _texto(celulas[0])
-        if not re.fullmatch(r"\d{9}", numero):
+        situacao = _texto(celulas[5])
+        # A linha de alto renome não tem processo, mas não pode sumir: é a
+        # marca de proteção mais ampla que a busca acha.
+        alto_renome = numero in ("-", "") and bool(ALTO_RENOME.search(situacao))
+        if not alto_renome and not re.fullmatch(r"\d{9}", numero):
             continue
         cod = re.search(r"CodPedido=(\d+)", celulas[0])
         apresentacao = re.search(r'alt="([^"]+)"', celulas[2])
-        situacao = _texto(celulas[5])
+        deposito = _texto(celulas[1])
         resultado.append(
             {
-                "processo": numero,
+                "processo": "" if alto_renome else numero,
                 "cod": cod.group(1) if cod else "",
-                "deposito": _texto(celulas[1]),
+                "deposito": "" if deposito == "-" else deposito,
                 "apresentacao": apresentacao.group(1).replace("Marca ", "") if apresentacao else "",
                 "marca": _texto(celulas[3]),
                 "situacao": situacao,
                 "viva": not MORTA.search(situacao),
+                "alto_renome": alto_renome,
                 "titular": _texto(celulas[6]),
                 "classe": _texto(celulas[7]),
             }
@@ -191,6 +204,9 @@ def buscar(args: argparse.Namespace) -> None:
         if args.vivos:
             print("    (só as vivas)")
         for m in bloco["marcas"]:
+            if m["alto_renome"]:
+                print(f"  ALTO RENOME (sem processo; protegida em todas as classes, art. 125) | {m['marca']}")
+                continue
             print(
                 f"  {m['processo']} | {m['deposito']} | {m['marca']} | {m['situacao']}"
                 f" | {m['titular']} | {m['classe']} | {m['apresentacao']}"

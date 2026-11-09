@@ -56,6 +56,8 @@ A busca do pePI responde em segundos, mas a ficha (`detalhe`) pode levar de 1 a 
    Uma marca nova costuma bater de frente com outra por uma palavra só, ou por um nome quase igual, e não pelo nome inteiro. "Esvai" não tem marca igual, mas esbarra em "E-vai", do Banco do Brasil.
 3. **Abra a ficha** (`detalhe`) de cada marca viva que pareça conflitar e leia a especificação. A mesma classe 42 cobre desde engenharia até "segurança por meio de senha"; só a especificação mostra se o mercado é o mesmo.
 4. **Classifique o risco** (alto, médio ou baixo) pela escala da referência, citando o processo, o titular, a situação e a especificação que pesam.
+
+   **Marca de alto renome** (art. 125: protegida em todas as classes) vem no topo da primeira página, sem número de processo; o script mostra a linha como `ALTO RENOME`, mesmo na busca por classe, e ela não tem ficha para abrir. Igual ao nome ou contida nele é risco alto, em qualquer classe; parecida no som ou na ideia, no mínimo médio. Até 2026-11-09 o script descartava essa linha: com a versão antiga, a Havaianas sumia da busca "vai".
 5. **Domínio**, quando o usuário estiver escolhendo nome: consulte junto. Se ele restringiu a extensão (por exemplo, só `.com.br`), respeite.
 6. **Relate** no formato abaixo.
 
