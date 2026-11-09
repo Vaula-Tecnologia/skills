@@ -42,6 +42,8 @@ Use `--json` nos dois quando for processar o resultado.
 
 Os scripts fazem pausas entre pedidos, porque o pePI e o registro.br são serviços públicos. Não rode em laço nem em paralelo. Para muitos nomes, rode uma lista só e espere.
 
+A busca do pePI responde em segundos, mas a ficha (`detalhe`) pode levar de 1 a 3 minutos por processo. Com mais de uma ficha, rode o `detalhe` em segundo plano ou com o tempo máximo do terminal, e passe todos os processos num comando só.
+
 ## Fluxo
 
 1. **Entenda o produto** em uma linha: o que faz e para quem. É isso que define as classes de Nice. Para software, comece por 09 e 42 e acrescente 35, 38 ou 45 conforme o serviço. A tabela está em `references/analise-de-risco.md`.
@@ -75,6 +77,8 @@ Ponha a data da busca, porque o resultado muda com o tempo. O horário segue a r
 
 - `RuntimeError: resposta do pePI sem contagem`: o formulário ou a sessão mudou. Não conclua "nenhuma marca". Abra `https://busca.inpi.gov.br/pePI/jsp/marcas/Pesquisa_classe_basica.jsp`, confira os campos do formulário e ajuste `Sessao.buscar` em `scripts/inpi.py`.
 - `processo ... não encontrado`: confira se o número tem 9 dígitos. O `detalhe` recebe o número do processo, não o código interno.
+- `pePI sem resposta` numa ficha: o script espera até 180 s, segue para o próximo processo e tenta as que faltaram mais uma vez no fim. Se alguma ainda faltar, ele lista em `FICHAS NÃO LIDAS` e sai com código 1, depois de mostrar as outras. Rode `detalhe` só com essas daqui a alguns minutos. Sem a ficha, não classifique o risco da marca; se precisar entregar antes, diga no relatório qual ficha não foi lida.
+- `pePI sem resposta` na busca: não houve resultado. Espere alguns minutos e rode de novo; não conclua "nenhuma marca".
 - Resultado com mais páginas do que as lidas: o cabeçalho avisa. Filtre por classe ou aumente `--max-paginas`, em vez de concluir com a lista cortada.
 - registro.br com "limite de consultas" (status 8): o script já esperou e tentou de novo. Espere um minuto e consulte só esses nomes; costuma ser outra busca rodando do mesmo IP.
 - registro.br com erro ou status desconhecido: diga o número do status e sugira conferir o domínio no site. Não adivinhe.
