@@ -24,6 +24,8 @@ import urllib.request
 from datetime import date, datetime, timedelta, timezone
 
 URL = "https://registro.br/v2/ajax/avail/raw/{}"
+# User-Agent honesto de robô, nunca de navegador; o mesmo do inpi.py.
+UA = "busca-marca/1.0 (robo de busca preliminar de marcas; +https://github.com/Vaula-Tecnologia/skills)"
 # Brasília não tem horário de verão desde 2019: UTC-3 fixo é o mesmo que
 # America/Sao_Paulo, e serve no Windows sem o pacote tzdata.
 UTC_MENOS_3 = timezone(timedelta(hours=-3), "UTC-3")
@@ -105,7 +107,7 @@ def esta_expirado(expira: str | None, hoje: date | None = None) -> bool:
 
 
 def consultar(fqdn: str) -> dict:
-    pedido = urllib.request.Request(URL.format(fqdn), headers={"User-Agent": "Mozilla/5.0 busca-marca/1.0"})
+    pedido = urllib.request.Request(URL.format(fqdn), headers={"User-Agent": UA})
     with urllib.request.urlopen(pedido, timeout=20) as resposta:
         return json.loads(resposta.read().decode("utf-8"))
 

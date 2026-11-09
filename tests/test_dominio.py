@@ -76,5 +76,19 @@ class SaidaDoExpirado(unittest.TestCase):
         self.assertEqual(dominio.linha_da_tabela(item)[0], "em liberação")
 
 
+class UserAgent(unittest.TestCase):
+    def test_robo_honesto_igual_ao_do_inpi(self):
+        self.assertFalse(dominio.UA.startswith("Mozilla"))
+        self.assertIn("busca-marca", dominio.UA)
+
+    def test_consulta_manda_o_user_agent(self):
+        resposta = mock.MagicMock()
+        resposta.__enter__.return_value.read.return_value = b'{"status": 0}'
+        with mock.patch.object(dominio.urllib.request, "urlopen", return_value=resposta) as urlopen:
+            self.assertEqual(dominio.consultar("exemplo.com.br"), {"status": 0})
+        pedido = urlopen.call_args.args[0]
+        self.assertEqual(pedido.get_header("User-agent"), dominio.UA)
+
+
 if __name__ == "__main__":
     unittest.main()

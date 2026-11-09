@@ -31,8 +31,12 @@ Marca é sinal + mercado. O examinador olha três coisas juntas:
 - **Art. 124, VI**: sinal genérico, comum ou simplesmente descritivo do
   serviço não se registra sozinho ("Senha Segura" para um cofre de senhas).
   Palavra comum que só sugere ("Selar") costuma passar.
-- **Art. 125**: marca de alto renome é protegida em todas as classes. Se
-  aparecer um titular desse porte, diga.
+- **Art. 125**: marca de alto renome é protegida em todas as classes. O pePI
+  a lista no topo da primeira página, sem número de processo e com a situação
+  "Alto Renome" (a Havaianas na busca "vai", 2026-11-09). Igual ao nome ou
+  contida nele: risco alto, em qualquer classe, e a classe do produto não a
+  afasta. Parecida no som ou na ideia: no mínimo risco médio. Diga no
+  relatório, citando o artigo.
 
 ## Classes que importam para software
 

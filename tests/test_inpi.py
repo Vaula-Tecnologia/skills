@@ -101,6 +101,83 @@ class DetalheComPePILento(unittest.TestCase):
         self.assertEqual(inpi.trecho_da_ficha(ficha("916940357")).strip(), "Nº do Processo: 916940357 Marca: TESTE")
 
 
+# Duas linhas reais do pePI (busca radical "vai", classe 09, 2026-11-09), com
+# as células como vieram: a da marca de alto renome, sem número de processo, e
+# a primeira linha comum da mesma página.
+LINHA_ALTO_RENOME = (
+    '<tr bgColor="#E0E0E0" class=normal> <td align="center"> <font class="normal"> - </font> </td>'
+    ' <td align="center"> <font class="normal"> - </font> </td> <td align="center"> <img'
+    ' src="/pePI/jsp/imagens/N.gif" width="18" height="18" border="0" alt="Marca Nominativa"> </td>'
+    ' <td align="left"> <font class="normal"> <b> Havaianas </b> </font> </td> <td align="center">'
+    ' <!-- Situação da Marca --> <img src="/pePI/jsp/imagens/registro_ok.gif" width="17" height="13"'
+    ' border="0" alt="Marca Registrada"> <!-- Fim da situação da marca. --> </td> <td class="left'
+    ' padding-5"> <font class="normal"> Alto Renome </font> </td> <td class="left"> </td> <td'
+    ' class="left"> </font> </td> </tr>'
+)
+LINHA_COMUM = (
+    '<tr bgColor="white" class=normal> <td align="center"> <font class="normal"> <a'
+    " href='/pePI/servlet/MarcasServletController?Action=detail&CodPedido=21164' class=\"visitado\">"
+    ' 003077454 </a> </font> </td> <td align="center"> <font class="normal"> 18/05/1959 </font> </td>'
+    ' <td align="center"> <img src="/pePI/jsp/imagens/N.gif" width="18" height="18" border="0"'
+    ' alt="Marca Nominativa"> </td> <td align="left"> <font class="normal"> <b> VALVAIR </b> </font>'
+    ' </td> <td align="center"> <!-- Situação da Marca --> <img src="/pePI/jsp/imagens/registro_ok.gif"'
+    ' width="17" height="13" border="0" alt="Marca Registrada"> <!-- Fim da situação da marca. -->'
+    ' </td> <td class="left padding-5"> <font class="normal"> Registro de marca em vigor </font> </td>'
+    ' <td class="left"> <font class="normal titular-marcas"> PARKER INTANGIBLES LLC </font> </td> <td'
+    ' class="left"> <font class="normal titulo-marcas"> 09 : 25 </font> </font> </td> </tr>'
+)
+PAGINA = (
+    "<html>Foram encontrados  2  processos que satisfazem  à pesquisa.<table>"
+    + LINHA_ALTO_RENOME
+    + LINHA_COMUM
+    + "</table></html>"
+)
+
+
+class AltoRenome(unittest.TestCase):
+    """Até 2026-11-09 a linha de alto renome era descartada por não ter
+    número de processo, e a Havaianas sumia da busca "vai"."""
+
+    def test_linha_de_alto_renome_nao_some(self):
+        linhas = inpi.linhas_de(PAGINA)
+        self.assertEqual(len(linhas), 2)
+        ar, comum = linhas
+        self.assertTrue(ar["alto_renome"])
+        self.assertEqual((ar["processo"], ar["marca"], ar["situacao"]), ("", "Havaianas", "Alto Renome"))
+        self.assertEqual((ar["deposito"], ar["cod"]), ("", ""))
+        self.assertTrue(ar["viva"])
+        self.assertFalse(comum["alto_renome"])
+        self.assertEqual((comum["processo"], comum["marca"], comum["classe"]), ("003077454", "VALVAIR", "09 : 25"))
+
+    def test_linha_sem_processo_que_nao_e_alto_renome_continua_fora(self):
+        linhas = inpi.linhas_de(PAGINA.replace("Alto Renome", "Outra Coisa"))
+        self.assertEqual([m["processo"] for m in linhas], ["003077454"])
+
+    def test_buscar_mostra_o_alto_renome(self):
+        class Sessao:
+            def buscar(self, marca, exata, classe):
+                return PAGINA
+
+        saida = io.StringIO()
+        args = argparse.Namespace(marca="vai", exata=False, classe=["9"], vivos=True, max_paginas=1, json=False)
+        with mock.patch.object(inpi, "Sessao", Sessao), contextlib.redirect_stdout(saida):
+            inpi.buscar(args)
+        texto = saida.getvalue()
+        self.assertIn("ALTO RENOME (sem processo; protegida em todas as classes, art. 125) | Havaianas", texto)
+        self.assertIn("003077454", texto)
+
+
+class UserAgent(unittest.TestCase):
+    def test_robo_honesto_nunca_navegador(self):
+        self.assertFalse(inpi.UA.startswith("Mozilla"))
+        self.assertIn("busca-marca", inpi.UA)
+
+    def test_sessao_manda_o_user_agent(self):
+        with mock.patch.object(inpi.Sessao, "_pedir", return_value=""):
+            sessao = inpi.Sessao()
+        self.assertIn(("User-Agent", inpi.UA), sessao.abridor.addheaders)
+
+
 class Timeout(unittest.TestCase):
     def test_limite_cobre_a_ficha_lenta(self):
         self.assertGreaterEqual(inpi.TIMEOUT, 180)
